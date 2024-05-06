@@ -419,12 +419,26 @@ class AntiAliasInterpolation2d(nn.Module):
 
         return out
 
+"""
+Using InstanceNorm2dAlt instead of torch.nn.InstanceNorm2d to avoid the following error when export to onnx:
+"Unsupported: ONNX export of instance_norm for unknown channel size" 
+referece: https://stackoverflow.com/questions/72187686/exception-when-converting-unet-from-pytorch-to-onnx
+"""
+class InstanceNorm2dAlt(nn.InstanceNorm2d):
+
+    def forward(self, inp: torch.Tensor) -> torch.Tensor:
+        self._check_input_dim(inp)
+        desc = 1 / (inp.var(axis=[2, 3], keepdim=True, unbiased=False) + self.eps) ** 0.5
+        retval = (inp - inp.mean(axis=[2, 3], keepdim=True)) * desc
+        return retval        
+
 
 class SPADE(nn.Module):
     def __init__(self, norm_nc, label_nc):
         super().__init__()
 
-        self.param_free_norm = nn.InstanceNorm2d(norm_nc, affine=False)
+        # self.param_free_norm = nn.InstanceNorm2d(norm_nc, affine=False)
+        self.param_free_norm = InstanceNorm2dAlt(norm_nc, affine=False)
         nhidden = 128
 
         self.mlp_shared = nn.Sequential(
