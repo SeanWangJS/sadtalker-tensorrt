@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 from src.facerender.modules.generator import OcclusionAwareSPADEGenerator as OcclusionAwareSPADEGenerator
 from src.facerender.modules.generator_v2 import OcclusionAwareSPADEGenerator as OcclusionAwareSPADEGeneratorV2
+from src.facerender.modules.generator_trt import OcclusionAwareSPADEGenerator as OcclusionAwareSPADEGeneratorTRT
 
 def normalize_kp(kp_source, kp_driving, kp_driving_initial, adapt_movement_scale=False,
                  use_relative_movement=False, use_relative_jacobian=False):
@@ -136,6 +137,9 @@ def make_animation(source_image, source_semantics, target_semantics,
                 kp_driving_value = kp_driving["value"]
                 kp_source_value = kp_source["value"]   
                 out = generator(source_image, kp_source=kp_source_value, kp_driving=kp_driving_value, kp_driving_jacobian=kp_driving_jacobian, kp_source_jacobian=kp_source_jacobian)         
+            elif isinstance(generator, OcclusionAwareSPADEGeneratorTRT):
+                out = generator(source_image, kp_source=kp_source, kp_driving=kp_norm)
+                out['prediction'] = torch.from_numpy(out['prediction']).to(source_image.device)
 
             '''
             source_image_new = out['prediction'].squeeze(1)
