@@ -4,6 +4,9 @@ import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm 
 
+from src.facerender.modules.generator import OcclusionAwareSPADEGenerator as OcclusionAwareSPADEGenerator
+from src.facerender.modules.generator_v2 import OcclusionAwareSPADEGenerator as OcclusionAwareSPADEGeneratorV2
+
 def normalize_kp(kp_source, kp_driving, kp_driving_initial, adapt_movement_scale=False,
                  use_relative_movement=False, use_relative_jacobian=False):
     if adapt_movement_scale:
@@ -125,7 +128,15 @@ def make_animation(source_image, source_semantics, target_semantics,
             kp_driving = keypoint_transformation(kp_canonical, he_driving)
                 
             kp_norm = kp_driving
-            out = generator(source_image, kp_source=kp_source, kp_driving=kp_norm)
+            if isinstance(generator, OcclusionAwareSPADEGenerator):
+                out = generator(source_image, kp_source=kp_source, kp_driving=kp_norm)
+            elif isinstance(generator, OcclusionAwareSPADEGeneratorV2):
+                kp_driving_jacobian = kp_driving["jacobian"] if "jacobian" in kp_driving else None
+                kp_source_jacobian = kp_source["jacobian"] if "jacobian" in kp_source else None
+                kp_driving_value = kp_driving["value"]
+                kp_source_value = kp_source["value"]   
+                out = generator(source_image, kp_source=kp_source_value, kp_driving=kp_driving_value, kp_driving_jacobian=kp_driving_jacobian, kp_source_jacobian=kp_source_jacobian)         
+
             '''
             source_image_new = out['prediction'].squeeze(1)
             kp_canonical_new =  kp_detector(source_image_new)
